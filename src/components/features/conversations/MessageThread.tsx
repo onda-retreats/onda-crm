@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { Clock, Check, CheckCheck, Eye, AlertCircle, Instagram, Mail, MessageCircle, Send } from 'lucide-react';
+import React from 'react';
+import { Clock, Check, CheckCheck, Eye, AlertCircle, Mail, MessageCircle, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatRelativeTime } from '@/lib/format';
 import { useConversations } from '@/store/conversations';
@@ -9,7 +10,7 @@ import type { Message, MessageStatus, Channel } from '@/data/crm';
 // ─── Channel Badge ────────────────────────────────────────────────────────────
 
 const channelConfig: Record<Channel, { label: string; Icon: React.ComponentType<{ className?: string }> }> = {
-  instagram: { label: 'Instagram', Icon: Instagram },
+  instagram: { label: 'Instagram', Icon: MessageCircle },
   whatsapp: { label: 'WhatsApp', Icon: MessageCircle },
   email: { label: 'Email', Icon: Mail },
   telegram: { label: 'Telegram', Icon: Send },

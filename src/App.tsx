@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, NavLink, useLocation, useMatch, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
@@ -15,12 +15,14 @@ import { TopBar } from '@/components/common';
 
 import { DashboardPage } from '@/views/DashboardPage';
 import { ContactsPage } from '@/views/ContactsPage';
+import { ContactDetailPage } from '@/views/ContactDetailPage';
 import { PipelinePage } from '@/views/PipelinePage';
 import { ConversationsPage } from '@/views/ConversationsPage';
 import { PaymentsPage } from '@/views/PaymentsPage';
 import { TasksPage } from '@/views/TasksPage';
 import { ProjectsPage } from '@/views/ProjectsPage';
 import { TemplatesPage } from '@/views/TemplatesPage';
+import { getContactById } from '@/data/crm';
 
 const NAV_ITEMS: Array<{
   to: string;
@@ -94,6 +96,21 @@ function Sidebar() {
 
 function PageTitle() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const contactMatch = useMatch('/contacts/:contactId');
+
+  if (contactMatch?.params.contactId) {
+    const contact = getContactById(contactMatch.params.contactId);
+    return (
+      <TopBar
+        title={contact?.name ?? 'Contact'}
+        subtitle={contact?.category}
+        onBack={() => navigate(-1)}
+        sticky
+      />
+    );
+  }
+
   const title = PAGE_TITLES[location.pathname] ?? 'Onda Retreats';
   return <TopBar title={title} sticky />;
 }
@@ -108,6 +125,7 @@ function AppLayout() {
           <Routes>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/contacts" element={<ContactsPage />} />
+            <Route path="/contacts/:contactId" element={<ContactDetailPage />} />
             <Route path="/pipeline" element={<PipelinePage />} />
             <Route path="/conversations" element={<ConversationsPage />} />
             <Route path="/payments" element={<PaymentsPage />} />

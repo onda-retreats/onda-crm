@@ -1,0 +1,273 @@
+```diff
+diff --git a/src/App.tsx b/src/App.tsx
+index 0000000..0000001 100644
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -1,5 +1,5 @@
+ import React from 'react';
+-import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom';
++import { BrowserRouter, Routes, Route, NavLink, useLocation, useMatch, useNavigate } from 'react-router-dom';
+ import {
+   LayoutDashboard,
+   Users,
+@@ -15,12 +15,14 @@ import { TopBar } from '@/components/common';
+ 
+ import { DashboardPage } from '@/views/DashboardPage';
+ import { ContactsPage } from '@/views/ContactsPage';
++import { ContactDetailPage } from '@/views/ContactDetailPage';
+ import { PipelinePage } from '@/views/PipelinePage';
+ import { ConversationsPage } from '@/views/ConversationsPage';
+ import { PaymentsPage } from '@/views/PaymentsPage';
+ import { TasksPage } from '@/views/TasksPage';
+ import { ProjectsPage } from '@/views/ProjectsPage';
+ import { TemplatesPage } from '@/views/TemplatesPage';
++import { getContactById } from '@/data/crm';
+ 
+ const NAV_ITEMS: Array<{
+   to: string;
+@@ -94,7 +96,20 @@ function Sidebar() {
+ 
+ function PageTitle() {
+   const location = useLocation();
+-  const title = PAGE_TITLES[location.pathname] ?? 'Onda Retreats';
++  const navigate = useNavigate();
++  const contactMatch = useMatch('/contacts/:contactId');
++
++  if (contactMatch?.params.contactId) {
++    const contact = getContactById(contactMatch.params.contactId);
++    return (
++      <TopBar
++        title={contact?.name ?? 'Contact'}
++        subtitle={contact?.category}
++        onBack={() => navigate(-1)}
++        sticky
++      />
++    );
++  }
++
++  const title = PAGE_TITLES[location.pathname] ?? 'Onda Retreats';
+   return <TopBar title={title} sticky />;
+ }
+ 
+@@ -107,6 +122,7 @@ function AppLayout() {
+           <Routes>
+             <Route path="/" element={<DashboardPage />} />
+             <Route path="/contacts" element={<ContactsPage />} />
++            <Route path="/contacts/:contactId" element={<ContactDetailPage />} />
+             <Route path="/pipeline" element={<PipelinePage />} />
+             <Route path="/conversations" element={<ConversationsPage />} />
+             <Route path="/payments" element={<PaymentsPage />} />
+diff --git a/src/main.tsx b/src/main.tsx
+index 0000000..0000001 100644
+--- a/src/main.tsx
++++ b/src/main.tsx
+@@ -4,10 +4,13 @@ import { createRoot } from "react-dom/client"
+ import "./index.css"
+ import App from "./App.tsx"
+ import { ThemeProvider } from "@/components/theme-provider.tsx"
++import { ConversationsProvider } from "@/store/conversations"
+ 
+ createRoot(document.getElementById("root")!).render(
+   <StrictMode>
+     <ThemeProvider>
+-      <App />
++      <ConversationsProvider>
++        <App />
++      </ConversationsProvider>
+     </ThemeProvider>
+   </StrictMode>
+ )
+diff --git a/src/views/ContactDetailPage.tsx b/src/views/ContactDetailPage.tsx
+new file mode 100644
+index 0000000..0000001
+--- /dev/null
++++ b/src/views/ContactDetailPage.tsx
+@@ -0,0 +1,92 @@
++import { Link, useParams } from 'react-router-dom';
++import { MessageSquare, Users } from 'lucide-react';
++import { Avatar, Badge, EmptyState } from '@/components/common';
++import { MessageThread } from '@/components/features/conversations/MessageThread';
++import { ReplyComposer } from '@/components/features/conversations/ReplyComposer';
++import { useConversations } from '@/store/conversations';
++import {
++  getContactById,
++  getProjectById,
++  mockDeals,
++  type Contact,
++  type Deal,
++} from '@/data/crm';
++
++const categoryVariant: Record<Contact['category'], 'primary' | 'success' | 'neutral'> = {
++  Team: 'primary',
++  Collaboration: 'success',
++  Leads: 'neutral',
++};
++
++function ContactHeader({ contact, deal }: { contact: Contact; deal?: Deal }) {
++  const project = deal?.projectId ? getProjectById(deal.projectId) : undefined;
++
++  return (
++    <div className="border-border/60 bg-card mx-4 mt-4 flex items-start gap-3 rounded-xl border p-4">
++      <Avatar seed={contact.id} size="lg" />
++      <div className="min-w-0 flex-1">
++        <div className="flex flex-wrap items-center gap-2">
++          <span className="text-foreground truncate text-sm font-semibold">{contact.name}</span>
++          <Badge variant={categoryVariant[contact.category]}>{contact.category}</Badge>
++          {deal ? <Badge variant="neutral">{deal.stage}</Badge> : null}
++        </div>
++        <div className="text-muted-foreground mt-0.5 space-y-0.5 text-xs">
++          {contact.handle ? <p className="truncate">{contact.handle}</p> : null}
++          {contact.phone ? <p className="truncate">{contact.phone}</p> : null}
++          {project ? (
++            <p className="truncate">
++              <span className="text-muted-foreground/70">Project · </span>
++              {project.name}
++            </p>
++          ) : null}
++        </div>
++      </div>
++    </div>
++  );
++}
++
++export function ContactDetailPage() {
++  const { contactId = '' } = useParams<{ contactId: string }>();
++  const contact = getContactById(contactId);
++  const { getConversationByContactId } = useConversations();
++
++  if (!contact) {
++    return (
++      <div className="p-4">
++        <EmptyState
++          icon={Users}
++          title="Contact not found"
++          description="This contact no longer exists or the link is broken."
++        />
++        <div className="mt-3 text-center">
++          <Link to="/contacts" className="text-primary text-xs font-medium">
++            Back to contacts
++          </Link>
++        </div>
++      </div>
++    );
++  }
++
++  const deal = mockDeals.find((d) => d.contactId === contact.id);
++  const conversation = getConversationByContactId(contact.id);
++
++  return (
++    <div className="flex h-full flex-col">
++      <ContactHeader contact={contact} deal={deal} />
++
++      <div className="mt-4 flex min-h-0 flex-1 flex-col">
++        {conversation ? (
++          <>
++            <MessageThread conversationId={conversation.id} />
++            <ReplyComposer conversationId={conversation.id} />
++          </>
++        ) : (
++          <div className="px-4 pb-6">
++            <EmptyState
++              icon={MessageSquare}
++              title="No conversation yet"
++              description="There is no conversation thread linked to this contact."
++            />
++          </div>
++        )}
++      </div>
++    </div>
++  );
++}
+diff --git a/src/components/features/contacts/ContactCard.tsx b/src/components/features/contacts/ContactCard.tsx
+index 0000000..0000001 100644
+--- a/src/components/features/contacts/ContactCard.tsx
++++ b/src/components/features/contacts/ContactCard.tsx
+@@ -1,3 +1,4 @@
++import { Link } from 'react-router-dom';
+ import { Avatar, Badge } from '@/components/common';
+ import { formatRelativeTime } from '@/lib/format';
+ import { cn } from '@/lib/utils';
+@@ -16,9 +17,10 @@ interface ContactCardProps {
+ 
+ export function ContactCard({ contact, className }: ContactCardProps) {
+   return (
+-    <div
++    <Link
++      to={`/contacts/${contact.id}`}
+       className={cn(
+-        'bg-card border-border/60 flex items-center gap-3 rounded-xl border p-3',
++        'bg-card border-border/60 hover:bg-card/80 flex items-center gap-3 rounded-xl border p-3 transition-colors',
+         className
+       )}
+     >
+@@ -37,6 +39,6 @@ export function ContactCard({ contact, className }: ContactCardProps) {
+       <div className="text-muted-foreground shrink-0 text-right text-xs">
+         {formatRelativeTime(contact.lastActivityAt)}
+       </div>
+-    </div>
++    </Link>
+   );
+ }
+diff --git a/src/components/features/pipeline/DealCard.tsx b/src/components/features/pipeline/DealCard.tsx
+index 0000000..0000001 100644
+--- a/src/components/features/pipeline/DealCard.tsx
++++ b/src/components/features/pipeline/DealCard.tsx
+@@ -1,3 +1,4 @@
++import { Link } from 'react-router-dom';
+ import { Avatar } from '@/components/common';
+ import { formatCurrency } from '@/lib/format';
+ import { cn } from '@/lib/utils';
+@@ -14,9 +15,10 @@ export function DealCard({ deal, className }: DealCardProps) {
+   const project = deal.projectId ? getProjectById(deal.projectId) : undefined;
+ 
+   return (
+-    <div
++    <Link
++      to={`/contacts/${deal.contactId}`}
+       className={cn(
+-        'bg-background border-border/60 flex flex-col gap-2 rounded-lg border p-3',
++        'bg-background border-border/60 hover:border-primary/40 flex flex-col gap-2 rounded-lg border p-3 transition-colors',
+         className
+       )}
+     >
+@@ -44,6 +46,6 @@ export function DealCard({ deal, className }: DealCardProps) {
+           />
+         </div>
+       ) : null}
+-    </div>
++    </Link>
+   );
+ }
+diff --git a/src/components/features/conversations/ConversationItem.tsx b/src/components/features/conversations/ConversationItem.tsx
+index 0000000..0000001 100644
+--- a/src/components/features/conversations/ConversationItem.tsx
++++ b/src/components/features/conversations/ConversationItem.tsx
+@@ -1,3 +1,4 @@
++import { Link } from 'react-router-dom';
+ import { Avatar, Badge } from '@/components/common';
+ import { formatRelativeTime } from '@/lib/format';
+ import { cn } from '@/lib/utils';
+@@ -38,7 +39,13 @@ export function ConversationItem({ conversation, className }: ConversationItemPr
+   const status = statusConfig[conversation.status];
+ 
+   return (
+-    <div className={cn('flex items-start gap-3 px-4 py-3', className)}>
++    <Link
++      to={`/contacts/${conversation.contactId}`}
++      className={cn(
++        'hover:bg-card/60 flex items-start gap-3 px-4 py-3 transition-colors',
++        className
++      )}
++    >
+       <div className="relative">
+         <Avatar seed={conversation.contactId} size="md" />
+         <span className="bg-card border-border absolute -right-0.5 -bottom-0.5 flex h-4 w-4 items-center justify-center rounded-full border">
+@@ -59,6 +66,6 @@ export function ConversationItem({ conversation, className }: ConversationItemPr
+           <Badge variant={status.variant}>{status.label}</Badge>
+         </div>
+       </div>
+-    </div>
++    </Link>
+   );
+ }
+```

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Avatar, Badge } from '@/components/common';
 import { formatRelativeTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -16,9 +17,10 @@ interface ContactCardProps {
 
 export function ContactCard({ contact, className }: ContactCardProps) {
   return (
-    <div
+    <Link
+      to={`/contacts/${contact.id}`}
       className={cn(
-        'bg-card border-border/60 flex items-center gap-3 rounded-xl border p-3',
+        'bg-card border-border/60 hover:bg-card/80 flex items-center gap-3 rounded-xl border p-3 transition-colors',
         className
       )}
     >
@@ -37,6 +39,6 @@ export function ContactCard({ contact, className }: ContactCardProps) {
       <div className="text-muted-foreground shrink-0 text-right text-xs">
         {formatRelativeTime(contact.lastActivityAt)}
       </div>
-    </div>
+    </Link>
   );
 }

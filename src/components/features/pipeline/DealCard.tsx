@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Avatar } from '@/components/common';
 import { formatCurrency } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -14,9 +15,10 @@ export function DealCard({ deal, className }: DealCardProps) {
   const project = deal.projectId ? getProjectById(deal.projectId) : undefined;
 
   return (
-    <div
+    <Link
+      to={`/contacts/${deal.contactId}`}
       className={cn(
-        'bg-background border-border/60 flex flex-col gap-2 rounded-lg border p-3',
+        'bg-background border-border/60 hover:border-primary/40 flex flex-col gap-2 rounded-lg border p-3 transition-colors',
         className
       )}
     >
@@ -44,6 +46,6 @@ export function DealCard({ deal, className }: DealCardProps) {
           />
         </div>
       ) : null}
-    </div>
+    </Link>
   );
 }
